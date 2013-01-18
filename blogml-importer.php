@@ -2,7 +2,7 @@
 /*
 Plugin Name: BlogML Importer
 Plugin URI: http://wordpress.org/extend/plugins/blogml-importer
-Description: Import posts, comments, users, and categories from a BlogML file. Based on BlogML importer written by Aaron Lerch (http://www.aaronlerch.com/) and modified to work with Wordpress 3.0. Plugin will also generate a CSV file with URL mappings to assist with URL rewriting.
+Description: Import posts, comments, users, categories, and tags from a BlogML file. Based on BlogML importer written by Aaron Lerch (http://www.aaronlerch.com/) and modified to work with Wordpress 3.0. Plugin will also generate a CSV file with URL mappings to assist with URL rewriting.
 Author: Sean Patterson
 Author URI: http://dillieodigital.net/2010/07/03/blogml-importer
 Version: 1.0
@@ -22,7 +22,7 @@ require_once('XPath.class.php');
 /**
  * BLogML Importer
  *
- * Will import posts, comments, users, and categories from a BlogML into 
+ * Will import posts, comments, users, categories, and tags from a BlogML into 
  * WordPress. Will also generate a CSV file with URL mappings. 
  *
  * @since unknown
@@ -48,6 +48,7 @@ class BlogML_Import {
     var $old_new_post_mapping = array (); // Key is old permalink URL, value is new permalink URL
     var $authors = array ();
     var $categories = array ();
+	var $tags = array ();
 	var $file;
 	var $id;
 	var $blogmlnames = array ();
@@ -65,7 +66,7 @@ class BlogML_Import {
 
 	function greet() {
 		echo '<div class="narrow">';
-		echo '<p>'.__('Upload your <a href="http://blogml.codeplex.com/">BlogML</a> file and we&#8217;ll import the posts, comments, authors, and categories into this blog.').'</p>';
+		echo '<p>'.__('Upload your <a href="http://blogml.codeplex.com/">BlogML</a> file and we&#8217;ll import the posts, comments, authors, categories, and tags into this blog.').'</p>';
 		echo '<p>'.__('Choose a BlogML file to upload, then click Upload file and import.').'</p>';
 		wp_import_upload_form("admin.php?import=blogml&amp;step=1");
 		echo '</div>';
@@ -134,7 +135,7 @@ class BlogML_Import {
 		{
 			$categoryId = $this->xPath->getAttributes($result[$i], "id");
 			$this->categories[$i] = $categoryId;
-		}		
+		}
 		
 		// Get posts
 		$this->posts = $this->xPath->match("/blog/posts/post");
@@ -235,6 +236,26 @@ class BlogML_Import {
 		}
 	}
 
+	function process_tags() {
+		global $wpdb;
+				
+		$tags = get_tags();
+
+		while ( $tags = array_shift($this->tags) ) {
+
+			// If the tag exists we leave it alone
+			if ( in_array($tag_name, $tags) )
+				continue;
+
+			$tagarr = array(
+				'cat_name' => $tag_name,
+				'taxonomy' => 'post_tag'
+			);
+
+			$tag_ID = wp_insert_category( $tagarr );
+		}
+	}
+
 	function process_posts() {
 		$i = -1;
 		echo '<ol>';
@@ -319,6 +340,15 @@ class BlogML_Import {
 			$categories[$cat_index] = $wpdb->escape($this->xPath->getAttributes($cat_results[$cat_index], 'ref'));
 		}
 
+		$tags = array ();
+		$result = $this->xPath->match('/tags/tag', $post);
+		$countResult = count($result);
+		for ($i = 0; $i < $countResult; $i++)
+		{
+			$tagId = $this->xPath->getAttributes($result[$i], "id");
+			$this->tags[$i] = $tagId;
+		}
+		
 		if ($post_id = post_exists($post_title, '', '')) {
 			echo '<li>';
 			printf(__('Post <i>%s</i> already exists.'), stripslashes($post_title));
@@ -335,11 +365,12 @@ class BlogML_Import {
 			$post_permalink = get_permalink($post_id);
 			
 			$this->old_new_post_mapping[$post_URL] = $post_permalink;
-
-			// Memorize old and new ID.
-			if ( $post_id && $post_URL && $this->posts_processed[$post_URL] )
-				$this->posts_processed[$post_URL][1] = $post_id; // New ID.
 			
+			// Memorize old and new ID.
+			if ( $post_id && $post_URL ) {
+				$this->posts_processed[$post_URL][1] = $post_id; // New ID.
+			}
+
 			// Add categories.
 			if (count($categories) > 0) {
 				$post_cats = array();
@@ -351,7 +382,24 @@ class BlogML_Import {
 					$post_cats[] = $cat_ID;
 				}
 				wp_set_post_categories($post_id, $post_cats);
-			}	
+			}
+			
+			// Add tags.
+			$tagNodes = $this->xPath->match("tags/tag", $post);
+			$num_tags = 0;
+			if ( count($tagNodes) > 0 ) {
+				$post_tags = array();
+				foreach ($tagNodes as $tag) {
+					$tag_name = $wpdb->escape($this->xPath->getAttributes($tag, 'ref'));
+					$tag_ID = (int) $wpdb->get_var("SELECT $wpdb->terms.term_id FROM $wpdb->terms, $wpdb->term_taxonomy WHERE $wpdb->terms.name = '$tag_name' AND $wpdb->term_taxonomy.taxonomy = 'post_tag'");
+					if ($tag_ID == 0) {
+						$tag_ID = wp_insert_category(array('cat_name' => $tag_name, 'taxonomy' => 'post_tag' ));
+					}
+					$post_tags[] = $tag_ID;
+				}
+				wp_set_post_tags($post_id, $post_tags);
+			}
+			
 		}
 		// Now for comments
 		$commentsNodes = $this->xPath->match("comments/comment", $post);
@@ -467,7 +515,7 @@ class BlogML_Import {
 
 // Instantiate and register the importer
 $blogml_import = new BlogML_Import();
-register_importer('blogml', __('BlogML', 'blogml-importer'), __('Import posts, comments, users, and categories from a BlogML file', 'blogml-importer'), array ($blogml_import, 'dispatch'));
+register_importer('blogml', __('BlogML', 'blogml-importer'), __('Import posts, comments, users, categories, and tags from a BlogML file', 'blogml-importer'), array ($blogml_import, 'dispatch'));
 
 function blogml_importer_init() {
     load_plugin_textdomain( 'blogml-importer', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
