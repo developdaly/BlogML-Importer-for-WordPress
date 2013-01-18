@@ -3770,14 +3770,14 @@ class XPathEngine extends XPathBase {
         $step = '.';
         $axis['axis']      = 'self';
         $axis['node-test'] = '*';
-        break $parseBlock;
+        break;
       }
 
       if ($step == '..') {
         // Select the parent axis.
         $axis['axis']      = 'parent';
         $axis['node-test'] = '*';
-        break $parseBlock;
+        break;
       }
 
       ///////////////////////////////////////////////////
@@ -3829,7 +3829,7 @@ class XPathEngine extends XPathBase {
       if ($step == '*') {
         // Use the child axis and select all children.
         $axis['node-test'] = '*';
-        break $parseBlock;
+        break;
       }
 
       // ### I'm pretty sure our current handling of cdata is a fudge, and we should
@@ -3837,7 +3837,7 @@ class XPathEngine extends XPathBase {
       if ($step == "text()") {
         // Handle the text node
         $axis["node-test"] = "cdata";
-        break $parseBlock;
+        break;
       }
 
       // There are a few node tests that we match verbatim.
@@ -3846,14 +3846,14 @@ class XPathEngine extends XPathBase {
           || $step == "text()"
           || $step == "processing-instruction") {
         $axis["node-test"] = $step;
-        break $parseBlock;
+        break;
       }
 
       // processing-instruction() is allowed to take an argument, but if it does, the argument
       // is a literal, which we will have parsed out to $[number].
       if (preg_match(":processing-instruction\(\$\d*\):", $step)) {
         $axis["node-test"] = $step;
-        break $parseBlock;
+        break;
       }
 
       // The only remaining way this can be a step, is if the remaining string is a simple name
@@ -3881,7 +3881,7 @@ class XPathEngine extends XPathBase {
         // Not currently recursing
         $LastFailedStep = '';
         $LastFailedContext = '';
-        break $parseBlock;
+        break;
       } 
 
       // It's not a node then, we must treat it as a PrimaryExpr
