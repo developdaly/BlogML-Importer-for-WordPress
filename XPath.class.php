@@ -5820,7 +5820,6 @@ class XPath extends XPathEngine {
       $attribute = $matches[2];
       if (!isSet($this->nodeIndex[$absoluteXPath]['attributes'][$attribute])) {
         $this->_displayError("The $absoluteXPath/attribute::$attribute value isn't a node in this document.", __LINE__, __FILE__, FALSE);
-        continue;
       }
       return array($this->nodeIndex[$absoluteXPath]['attributes'][$attribute]);
     } else if (preg_match(":(.*)/text\(\)(\[(.*)\])?$:U", $xPathQuery, $matches)) {
@@ -5967,7 +5966,7 @@ class XPath extends XPathEngine {
                     XML_OPTION_CASE_FOLDING => $this->getProperties('caseFolding'), 
                     XML_OPTION_SKIP_WHITE   => $this->getProperties('skipWhiteSpaces')
                   );
-    $xmlParser =& new XPathEngine($xmlOptions);
+    $xmlParser = new $XPathEngine($xmlOptions);
     $xmlParser->setVerbose($this->properties['verboseLevel']);
     // Parse the XML string
     if (!$xmlParser->importFromString($xmlString)) {
@@ -6225,7 +6224,7 @@ EOD;
   
   // The sample code:
   $xmlOptions = array(XML_OPTION_CASE_FOLDING => TRUE, XML_OPTION_SKIP_WHITE => TRUE);
-  $xPath =& new XPath(FALSE, $xmlOptions);
+  $xPath = new $XPath(FALSE, $xmlOptions);
   //$xPath->bDebugXmlParse = TRUE;
   if (!$xPath->importFromString($xmlSource)) { echo $xPath->getLastError(); exit; }
   
